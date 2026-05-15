@@ -1,15 +1,29 @@
 const express = require('express');
 const cors = require('cors');
 const { ObjectId } = require('mongodb');
-const { connectDB, getDB, closeConnection } = require('./database');
+const { connectDB, getDB } = require('./database');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
-app.use(cors());
+app.use(cors({ origin: '*' }));
 app.use(express.json());
+
+// Lazy DB connection middleware — ensures DB is connected before any route
+let isConnected = false;
+app.use(async (req, res, next) => {
+  if (!isConnected) {
+    try {
+      await connectDB();
+      isConnected = true;
+    } catch (err) {
+      return res.status(500).json({ error: 'Database connection failed', details: err.message });
+    }
+  }
+  next();
+});
 
 // Health check endpoint
 app.get('/', (req, res) => {
@@ -172,24 +186,12 @@ app.delete('/properties/:property_id', async (req, res) => {
   }
 });
 
-// Start server
-async function startServer() {
-  try {
-    await connectDB();
-    app.listen(PORT, () => {
-      console.log(`Server running on http://localhost:${PORT}`);
-    });
-  } catch (error) {
-    console.error("Failed to start server:", error);
-    process.exit(1);
-  }
+// For local development: start the server normally
+if (process.env.NODE_ENV !== 'production' && require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
 }
 
-// Handle graceful shutdown
-process.on('SIGINT', async () => {
-  console.log('\nShutting down gracefully...');
-  await closeConnection();
-  process.exit(0);
-});
-
-startServer();
+// Export for Vercel serverless
+module.exports = app;
