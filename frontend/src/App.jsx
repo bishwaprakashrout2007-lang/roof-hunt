@@ -27,7 +27,7 @@ function App() {
       });
       const queryString = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
       
-      const response = await fetch(`http://localhost:5000/properties${queryString}`);
+      const response = await fetch(`https://roof-hunt-txbt.vercel.app/properties${queryString}`);
       if (!response.ok) {
         throw new Error('Network response was not ok');
       }
